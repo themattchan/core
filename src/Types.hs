@@ -18,18 +18,18 @@ type CoreExpr = Expr Name
 
 -- The main expr data type
 data Expr a
-  = EVar Name				-- Variables
-  | ENum Int				-- Numbers
-  | EConstr Int Int			-- Construtor tag arity
-  | EAp (Expr a) (Expr a)	-- Appliations
-  | ELet					-- Let(rec) expressions
-      Bool					--   boolean with True = recursive,
-      [(a, Expr a)]			--   Definitions
-      (Expr a)				--   Body of let(re)
-  | ECase					-- Case expression
-      (Expr a)				--   Expression to scrutinise
-      [Alter a]				--   Alternatives
-  | ELam [a] [(Expr a)]		-- Lambda abstractions
+  = EVar Name               -- Variables
+  | ENum Int                -- Numbers
+  | EConstr Int Int         -- Construtor tag arity
+  | EAp (Expr a) (Expr a)   -- Appliations
+  | ELet                    -- Let(rec) expressions
+      Bool                  --   boolean with True = recursive,
+      [(a, Expr a)]         --   Definitions
+      (Expr a)              --   Body of let(re)
+  | ECase                   -- Case expression
+      (Expr a)              --   Expression to scrutinise
+      [Alter a]             --   Alternatives
+  | ELam [a] [(Expr a)]     -- Lambda abstractions
   deriving (Show, Eq)
 
 bindersOf :: [(a,b)] -> [a]
@@ -51,8 +51,8 @@ preludeDefs
     , ("S", ["f","g","x"], EAp (EAp (EVar "f") (EVar "x"))
                                (EAp (EVar "g") (EVar "x")))
     , ("compose", ["f","g","x"], EAp (EVar "f")
-	                                   (EAp (EVar "g") (EVar "x")))
+                                       (EAp (EVar "g") (EVar "x")))
     , ("twice", ["f"], EAp (EAp (EVar "compose") (EVar "f")) (EVar "f"))
-	]
+    ]
 
 pprint :: CoreProgram -> String
