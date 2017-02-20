@@ -20,6 +20,9 @@ source-repository head
 library
   hs-source-dirs:      src
   exposed-modules:     Core
+                     , Core.Language
+                     , Core.Pretty
+                     , Core.Parser
   build-depends:       base >= 4.7 && < 5
                      , containers
                      , parsec

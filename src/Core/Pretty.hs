@@ -33,7 +33,7 @@ ppExpr (ECase e alts)
         = char '<' <> int tag <> char '>'
         <+> ppVarList vars
         <+> text "->" <+> ppExpr expr <+> semi
-ppExpr (ELam args body) = char '\' <+> ppVarList args <+> char '.' <+> ppExpr body
+ppExpr (ELam args body) = char '\\' <+> ppVarList args <+> char '.' <+> ppExpr body
 ppExpr e = ppAExpr e
 
 ppAExpr :: CoreExpr -> Doc

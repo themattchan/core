@@ -1,3 +1,3 @@
-module Parser where
+module Core.Parser where
 
 import Text.Parsec
