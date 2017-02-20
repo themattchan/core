@@ -1,12 +1,12 @@
 name:                core
 version:             0.1.0.0
--- synopsis:
+synopsis:            Implementing functional languages
 -- description:
-homepage:            https://github.com/githubuser/core#readme
+homepage:            https://github.com/themattchan/core#readme
 license:             BSD3
 license-file:        LICENSE
-author:              Author name here
-maintainer:          example@example.com
+author:              Matthew Chan
+maintainer:          matt@parametri.city
 copyright:           2017 Author name here
 category:            Web
 build-type:          Simple
@@ -15,20 +15,21 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Lib
+  exposed-modules:     Core
   build-depends:       base >= 4.7 && < 5
                      , containers
                      , parsec
                      , mtl
+                     , pretty
   default-language:    Haskell2010
 
-executable core-exe
-  hs-source-dirs:      app
-  main-is:             Main.hs
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
-  build-depends:       base
-                     , core
-  default-language:    Haskell2010
+-- executable core-exe
+--   hs-source-dirs:      app
+--   main-is:             Main.hs
+--   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+--   build-depends:       base
+--                      , core
+--   default-language:    Haskell2010
 
 test-suite core-test
   type:                exitcode-stdio-1.0
@@ -36,9 +37,12 @@ test-suite core-test
   main-is:             Spec.hs
   build-depends:       base
                      , core
+                     , tasty
+                     , tasty-hunit
+--                     , tasty-quickcheck
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
 
 source-repository head
   type:     git
-  location: https://github.com/githubuser/core
+  location: https://github.com/themattchan/core
