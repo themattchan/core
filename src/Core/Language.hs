@@ -29,7 +29,7 @@ data Expr a
   | ECase                   -- Case expression
       (Expr a)              --   Expression to scrutinise
       [Alter a]             --   Alternatives
-  | ELam [a] [(Expr a)]     -- Lambda abstractions
+  | ELam [a] (Expr a)       -- Lambda abstractions
   deriving (Show, Eq)
 
 bindersOf :: [(a,b)] -> [a]
