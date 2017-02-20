@@ -21,7 +21,7 @@ ppExpr (EVar v)    = text v
 -- TODO Ex 1.8 precedence for builtin operators
 ppExpr (EAp e1 e2) = ppExpr e1 <+> ppAExpr e2
 ppExpr (ELet isRec defns expr)
-  = hang (text (if isRec then "letrec" else "let")
+  = hang (text (if isRec then "letrec" else "let"))
           3 (ppDefns defns) $+$
     text "in " <> ppExpr expr
 ppExpr (ECase e alts)
