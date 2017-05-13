@@ -53,6 +53,7 @@ int = read <$> many1 digit
 
 binary op = P.Infix e P.AssocLeft where
   e = do { o <- symbol op; return (\x y -> EAp (EAp (EVar o) x) y) }
+prefix op = Prefix (do { reservedOp op; return fun })
 
 sequence1 = P.semiSep1 coreLexer
 
@@ -119,8 +120,7 @@ pCoreExpr = choice [pLet, pCase, pLam, expr1] where
 
   pCtor = do
     reserved "Pack"
-    (i,j) <- braces $ (,) <$> int <* reservedOp "," <*> int
-    return (EConstr i j)
+    braces $ EConstr <$> int <* reservedOp "," <*> int
 
   pAexpr = spaces *> choice [pVar, pNum, pCtor, parens pCoreExpr] <* spaces
 

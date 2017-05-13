@@ -3,7 +3,8 @@ import Data.Maybe
 import Data.Monoid
 
 type Addr = Int
-data Heap a = Heap { heapSize :: Int, heapFree :: [Addr], heapCts :: [(Addr,a)] }
+data Heap a = Heap { heapSize :: Int, heapFree :: [Addr], heapCts :: [(Addr,a)]
+                   } deriving Show
 
 hInitial :: Heap a
 hInitial = Heap 0 [1..] []
