@@ -35,7 +35,7 @@ hIsNull :: Addr -> Bool
 hIsNull = (0 ==)
 
 showAddr :: Addr -> String
-showAddr a = "#" ++ show a
+showAddr = ("#" <>) . show
 
 remove :: [(Addr,a)] -> Addr -> [(Addr,a)]
 remove [] a = error ("Attempt to update or free nonexistent address " <> showAddr a)
