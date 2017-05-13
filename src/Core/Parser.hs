@@ -1,4 +1,8 @@
-module Core.Parser where
+module Core.Parser
+  ( parseFile
+  , parseProgram
+  ) where
+
 import Control.Exception (Exception(), throw)
 import Data.Functor
 
