@@ -5,6 +5,7 @@ module Core.Parser
 
 import Control.Exception (Exception(), throw)
 import Data.Functor
+import Data.Maybe
 
 import Text.Parsec hiding (spaces)
 import Text.Parsec.Language
@@ -53,10 +54,12 @@ int = read <$> many1 digit
 binary op = P.Infix e P.AssocLeft where
   e = do { o <- symbol op; return (\x y -> EAp (EAp (EVar o) x) y) }
 
+sequence1 = P.semiSep1 coreLexer
+
 -- * Parser
 
 pProgram :: Parser CoreProgram
-pProgram = P.semiSep1 coreLexer pSc
+pProgram =  sequence1 pSc
 
 -- Supercombinators
 pSc :: Parser CoreScDefn
@@ -123,5 +126,3 @@ pCoreExpr = choice [pLet, pCase, pLam, expr1] where
 
   pNum  = ENum  <$> int
   pVar  = EVar  <$> identifier
-
-  sequence1 = flip sepBy1 (reservedOp ";")

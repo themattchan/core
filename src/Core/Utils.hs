@@ -22,8 +22,11 @@ hFree h a = h { heapSize = heapSize h -1
               }
 
 hLookup :: Heap a -> Addr -> a
-hLookup h a = fromMaybe err $ lookup a (heapCts h)
-  where err = error ("can't find node " <> showAddr a <> " in heap")
+hLookup h a = lookup' err a (heapCts h)
+  where err = "can't find node " <> showAddr a <> " in heap"
+
+lookup' :: Eq a => String -> a -> [(a, b)] -> b
+lookup' err a xs = fromMaybe (error err) (lookup a xs)
 
 hAddresses :: Heap a -> [Addr]
 hAddresses = map fst . heapCts
