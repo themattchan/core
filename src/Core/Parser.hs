@@ -1,4 +1,5 @@
 module Core.Parser where
+import Control.Exception (Exception(), throw)
 import Data.Functor
 
 import Text.Parsec hiding (spaces)
@@ -6,16 +7,20 @@ import Text.Parsec.Language
 import qualified Text.Parsec.Token as P
 import qualified Text.Parsec.Expr as P
 import Text.Parsec.Char (digit)
-import Text.Parsec.Combinator
-import Text.Parsec.String (parseFromFile, Parser(..))
+import Text.Parsec.String (Parser())
 
-
-import Debug.Trace
 import Core.Language
-import Core.Utils
 
-tparse :: Parser a -> String -> Either ParseError a
-tparse p x = runParser p () "" x
+instance Exception ParseError
+
+doParseProgram :: SourceName -> String -> CoreProgram
+doParseProgram f = either throw id . parse pProgram f
+
+parseFile :: FilePath -> IO CoreProgram
+parseFile f = doParseProgram f <$> readFile f
+
+parseProgram :: String -> CoreProgram
+parseProgram = doParseProgram ""
 
 -- * Lexing and utils
 
@@ -107,7 +112,7 @@ pCoreExpr = choice [pLet, pCase, pLam, expr1] where
 
   pCtor = do
     reserved "Pack"
-    (i,j) <- braces $ (,) <$> int <*> (reservedOp "," >> int)
+    (i,j) <- braces $ (,) <$> int <* reservedOp "," <*> int
     return (EConstr i j)
 
   pAexpr = spaces *> choice [pVar, pNum, pCtor, parens pCoreExpr] <* spaces
