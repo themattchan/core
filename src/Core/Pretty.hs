@@ -15,16 +15,18 @@ ppScDefn :: CoreScDefn -> Doc
 ppScDefn (name, args, expr) =
   text name <+> ppVarList args <+> char '=' <+> ppExpr expr
 
-ppExpr :: CoreExpr -> Doc
-ppExpr (ENum n)    = int n
-ppExpr (EVar v)    = text v
--- TODO Ex 1.8 precedence for builtin operators
-ppExpr (EAp e1 e2) = ppExpr e1 <+> ppAExpr e2
-ppExpr (ELet isRec defns expr)
+ppExpr :: Int -> CoreExpr -> Doc
+ppExpr _ (ENum n)    = int n
+ppExpr _ (EVar v)    = text v
+ppExpr _ (EConstr tag arity) = text "Pack" <> braces (int tag <> comma <> int arity)
+ppExpr prec (EAp left@(EAp (EVar b) e1) e2)
+  | b `elem` binops =
+ppExpr prec (EAp e1 e2) = ppExpr prec e1 <+> ppAExpr prec e2
+ppExpr prec (ELet isRec defns expr)
   = hang (text (if isRec then "letrec" else "let"))
           3 (ppDefns defns) $+$
     text "in " <> ppExpr expr
-ppExpr (ECase e alts)
+ppExpr prec (ECase e alts)
   = hang caseof 2 (ppAlts alts)
     where
       caseof = text "case" <+> ppExpr e <+> text "of"
@@ -33,13 +35,12 @@ ppExpr (ECase e alts)
         = char '<' <> int tag <> char '>'
         <+> ppVarList vars
         <+> text "->" <+> ppExpr expr <+> semi
-ppExpr (ELam args body) = char '\\' <+> ppVarList args <+> char '.' <+> ppExpr body
-ppExpr e = ppAExpr e
+ppExpr prec (ELam args body) = char '\\' <+> ppVarList args <+> char '.' <+> ppExpr body
+--ppExpr e = ppAExpr e
 
-ppAExpr :: CoreExpr -> Doc
-ppAExpr (EConstr tag arity) = text "Pack" <> braces (int tag <> comma <> int arity)
-ppAExpr e | isAtomicExpr e = ppExpr e
-          | otherwise      = parens (ppExpr e)
+-- ppAExpr :: CoreExpr -> Doc
+-- ppAExpr e | isAtomicExpr e = ppExpr e
+--           | otherwise      = parens (ppExpr e)
 
 ppDefns :: [(Name, CoreExpr)] -> Doc
 ppDefns = hcat' . punctuate semi . map ppDefn
