@@ -33,7 +33,7 @@ coreDef = haskellStyle
   { P.reservedNames = [ "let", "letrec", "case", "in", "of", "Pack" ]
   , P.reservedOpNames = [ "=", ",", ";","->","<-", "\\", "."]
   }
-relops = ["==", "~=", ">=","<="]
+relops = ["<", ">", "==", "~=", ">=","<="]
 arithops = [ "+","-","*","/"]
 bitops = ["&","|"]
 
