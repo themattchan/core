@@ -84,7 +84,27 @@ numStep _ _ = error "Number applied as a function!"
 apStep st a1 a2 = st { tiStack = a1 : tiStack st }
 
 scStep st sc_name arg_names body =
-  st { tiStack =
+  st { tiStack = result_addr : drop (length arg_names + 1) (tiStack st)
+     , tiHeap  = new_heap }
+  where
+    (new_heap, result_addr) = instantiate body (tiHeap st) env
+    env = arg_bindings ++ tiGlobals st
+    arg_bindings = zip arg_names (getArgs (tiHeap st) (tiStack st))
+
+getArgs :: TiHeap -> TiStack -> [Addr]
+getArgs heap (sc:stack) = map get_arg stack
+  where
+    get_arg addr = arg where (NAp fun arg) = hLookup heap addr
+
+instantiate :: CoreExpr -> TiHeap -> [(Name,Addr)] -> (TiHeap,Addr)
+instantiate (ENum n)  heap env = hAlloc heap (NNum n)
+instantiate (EAp e1 e2) heap env = hAlloc heap2 (NAp a1 a2)
+  where
+    (heap1, a1) = instantiate e1 heap  env
+    (heap2, a2) = instantiate e2 heap1 env
+instantiate (EVar v) heap env = (heap, lookup' ("Unbound variable: " <> show v) v env)
+instantiate ce _ _ = error "Can't instantiate expression type yet: " <> show ce
+
 
 showResults :: [TiState] -> String
 showResults = undefined
