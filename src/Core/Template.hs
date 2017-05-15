@@ -101,17 +101,22 @@ apStep st a1 a2 = st { tiStack = a1 : tiStack st }
 
 scStep :: TiState -> Name -> [Name]  -> CoreExpr -> TiState
 scStep st sc_name arg_names body =
-  st { tiStack = result_addr : drop (length arg_names + 1) (tiStack st)
+  st { tiStack = result_addr : rest
      , tiHeap  = new_heap }
   where
+    (sc_and_actuals, rest) = splitAt (length arg_names + 1) (tiStack st)
     (new_heap, result_addr) = instantiate body (tiHeap st) env
     env = arg_bindings ++ tiGlobals st
-    arg_bindings = zip arg_names (getArgs (tiHeap st) (tiStack st))
+    actual_params = getArgs (tiHeap st) sc_and_actuals
+    arg_bindings
+      | length (tail sc_and_actuals) == length arg_names = zip arg_names actual_params
+      | otherwise = error $ "Supercombinator applied to too few arguments"
+
 
 getArgs :: TiHeap -> TiStack -> [Addr]
 getArgs heap (sc:stack) = map get_arg stack
   where
-    get_arg addr = arg where (NAp fun arg) = hLookup heap addr
+    get_arg addr = let (NAp fun arg) = hLookup heap addr in arg
 
 instantiate :: CoreExpr -> TiHeap -> [(Name,Addr)] -> (TiHeap,Addr)
 instantiate (ENum n)    heap env = hAlloc heap  (NNum n)
@@ -133,7 +138,7 @@ showState :: TiState -> Doc
 showState TiState{..} = showStack tiHeap tiStack $+$ showHeap tiHeap
 
 showHeap :: TiHeap -> Doc
-showHeap = (text "Heap " <>) . brackets
+showHeap = (text "Heap" <+>) . brackets
          . hcat . punctuate (comma <> space)
          . map showAddrD . hAddresses
 
