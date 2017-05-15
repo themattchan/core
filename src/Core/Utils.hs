@@ -6,8 +6,8 @@ import Text.PrettyPrint hiding ((<>))
 --------------------------------------------------------------------------------
 -- * Misc utilities
 
-hcat' :: [Doc] -> Doc
-hcat' = foldr ($+$) empty
+vcat' :: [Doc] -> Doc
+vcat' = foldr ($+$) empty
 
 --------------------------------------------------------------------------------
 -- * Appendix A: Heap data type and associated functions

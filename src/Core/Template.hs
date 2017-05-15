@@ -126,14 +126,19 @@ instantiate ce _ _ = error $ "Can't instantiate expression type yet: " <> show c
 -- * Step 3: Print results
 
 showResults :: [TiState] -> String
-showResults states = render . hcat' $ results where
+showResults states = render . vcat' . punctuate (text "\n") $ results where
   results = map showState states <> [ showStats (last states) ]
 
 showState :: TiState -> Doc
-showState TiState{..} = showStack tiHeap tiStack
+showState TiState{..} = showStack tiHeap tiStack $+$ showHeap tiHeap
+
+showHeap :: TiHeap -> Doc
+showHeap = (text "Heap " <>) . brackets
+         . hcat . punctuate (comma <> space)
+         . map showAddrD . hAddresses
 
 showStack :: TiHeap -> TiStack -> Doc
-showStack heap stack = text "Stk" <+> brackets (nest 2 (hcat' items))
+showStack heap stack = text "Stk" <+> brackets (nest 2 (vcat' items))
   where
     items = map showStackItem stack
     showStackItem addr = mconcat [ showFWAddr addr, text ": "
@@ -142,9 +147,10 @@ showStack heap stack = text "Stk" <+> brackets (nest 2 (hcat' items))
 
 showStkNode :: TiHeap -> Node -> Doc
 showStkNode heap (NAp fun_addr arg_addr) =
-  mconcat [ text "NAp ", showFWAddr fun_addr
+  mconcat [ text "NAp"
+          , space, showFWAddr fun_addr
           , space, showFWAddr arg_addr
-          , parens (showNode (hLookup heap arg_addr))
+          , space, parens (showNode (hLookup heap arg_addr))
           ]
 showStkNode _heap node = showNode node
 
@@ -162,7 +168,9 @@ showAddrD addr = text (showAddr addr)
 
 -- Show address in field of width 4
 showFWAddr :: Addr -> Doc
-showFWAddr addr = sizedText 4 (showAddr addr)
+showFWAddr addr = pad <> text a
+  where a   = showAddr addr
+        pad = mconcat (replicate (4 - length a) space)
 
 showStats :: TiState -> Doc
 showStats TiState{..} =
