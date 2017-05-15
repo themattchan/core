@@ -16,6 +16,14 @@ type Addr = Int
 data Heap a = Heap { heapSize :: Int, heapFree :: [Addr], heapCts :: [(Addr,a)]
                    } deriving Show
 
+data HeapStats = HeapStats
+  { heapAllocs :: Int, heapUpdates :: Int, heapRemoves :: Int
+  } deriving Show
+
+instance Monoid HeapStats where
+  mempty = HeapStats 0 0 0
+  (HeapStats a b c) `mappend` (HeapStats x y z) = HeapStats (a + x) (b + y) (c + z)
+
 hInitial :: Heap a
 hInitial = Heap 0 [1..] []
 

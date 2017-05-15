@@ -1,4 +1,11 @@
-{-# LANGUAGE RecordWildCards, PatternGuards, ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleInstances      #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE PatternGuards          #-}
+{-# LANGUAGE RecordWildCards        #-}
+{-# LANGUAGE ScopedTypeVariables    #-}
+{-# LANGUAGE TemplateHaskell        #-}
+{-# LANGUAGE TypeSynonymInstances   #-}
 module Core.Template where
 
 import Control.Arrow ((>>>))
@@ -8,25 +15,23 @@ import Data.List
 
 import Text.PrettyPrint hiding ((<>))
 
+import Control.Lens (to, (&), (%~), (^.), (+~), (.~), (^?!))
+import Control.Lens.TH
+
 import Core.Language
 import Core.Utils
 import Core.Parser
 
-runProg :: String -> String
-runProg = parseProgram >>> compile >>> eval >>> showResults
-
-runFile :: FilePath -> IO ()
-runFile = parseFile >=> compile >>> eval >>> showResults >>> putStrLn
 
 --------------------------------------------------------------------------------
 -- * Types
 
 data TiState = TiState
-  { tiStack   :: TiStack
-  , tiDump    :: TiDump
-  , tiHeap    :: TiHeap
-  , tiGlobals :: TiGlobals
-  , tiStats   :: TiStats
+  { tiStateStack   :: TiStack
+  , tiStateDump    :: TiDump
+  , tiStateHeap    :: TiHeap
+  , tiStateGlobals :: TiGlobals
+  , tiStateStats   :: TiStats
   } deriving (Show)
 
 type TiStack = [Addr]
@@ -44,11 +49,28 @@ data Node = NAp Addr Addr
 
 type TiGlobals =  [(Name,Addr)]
 
-type TiStats = Int
-tiStatInitial = 0
-tiStatIncSteps s = s+1
-tiStatGetSteps s = s
-updateStats f st = st { tiStats = f (tiStats st) }
+data TiStats = TiStats
+  { tiStatsScReductions   :: Int
+  , tiStatsPrimReductions :: Int
+  , tiStatsHeapStats      :: HeapStats
+  , tiStatsSteps          :: Int
+  , tiStatsMaxStackDepth  :: Int
+  } deriving Show
+
+makeLensesWith camelCaseFields  ''TiState
+makeLensesWith camelCaseFields  ''TiStats
+
+tiStatInitial = TiStats 0 0 mempty 0 0
+updateStats f = stats %~ f
+
+--------------------------------------------------------------------------------
+-- * Runners
+
+runProg :: String -> String
+runProg = parseProgram >>> compile >>> eval >>> showResults
+
+runFile :: FilePath -> IO ()
+runFile = parseFile >=> compile >>> eval >>> showResults >>> putStrLn
 
 --------------------------------------------------------------------------------
 -- * Step 1: Compile
@@ -76,20 +98,20 @@ eval state = state : rest_states where
   next_state = doAdmin (step state)
 
 doAdmin :: TiState -> TiState
-doAdmin = updateStats tiStatIncSteps
+doAdmin = updateStats (steps +~ 1)
 
 tiFinal :: TiState -> Bool
-tiFinal TiState{..}
-  | [sole_addr] <- tiStack = isDataNode (hLookup tiHeap sole_addr)
-  | []          <- tiStack = error ("Empty stack!")
-  | otherwise              = False
+tiFinal st
+  | [sole_addr] <- st^.stack = isDataNode (hLookup (st^.heap) sole_addr)
+  | st^.stack.to null        = error ("Empty stack!")
+  | otherwise                = False
 
 isDataNode :: Node -> Bool
 isDataNode (NNum _) = True
 isDataNode _        = False
 
 step :: TiState -> TiState
-step st@TiState{..} = dispatch (hLookup tiHeap (head tiStack)) where
+step st = dispatch (hLookup (st^.heap) (st^.stack ^?! to head)) where
   dispatch (NNum n)                  = numStep st n
   dispatch (NAp a1 a2)               = apStep st a1 a2
   dispatch (NSupercomb sc args body) = scStep st sc args body
@@ -98,17 +120,17 @@ numStep :: TiState -> Int -> TiState
 numStep _ _ = error "Number applied as a function!"
 
 apStep :: TiState -> Addr -> Addr -> TiState
-apStep st a1 a2 = st { tiStack = a1 : tiStack st }
+apStep st a1 a2 = st & stack .~ a1 : st^.stack
 
 scStep :: TiState -> Name -> [Name]  -> CoreExpr -> TiState
 scStep st sc_name arg_names body =
-  st { tiStack = result_addr : rest
-     , tiHeap  = new_heap }
+  st & stack .~ result_addr : rest
+     & heap  .~ new_heap
   where
-    (sc_and_actuals, rest)  = splitAt (length arg_names + 1) (tiStack st)
-    (new_heap, result_addr) = instantiate body (tiHeap st) env
-    env                     = arg_bindings ++ tiGlobals st
-    actual_params           = getArgs (tiHeap st) sc_and_actuals
+    (sc_and_actuals, rest)  = splitAt (length arg_names + 1) (st^.stack)
+    (new_heap, result_addr) = instantiate body (st^.heap) env
+    env                     = arg_bindings ++ (st^.globals)
+    actual_params           = getArgs (st^.heap) sc_and_actuals
     arg_bindings
       | length (tail sc_and_actuals) == length arg_names
       = zip arg_names actual_params
@@ -138,7 +160,7 @@ showResults states = render . vcat' . punctuate (text "\n") $ results where
   results = map showState states <> [ showStats (last states) ]
 
 showState :: TiState -> Doc
-showState TiState{..} = showStack tiHeap tiStack $+$ showHeap tiHeap
+showState TiState{..} = showStack tiStateHeap tiStateStack $+$ showHeap tiStateHeap
 
 showHeap :: TiHeap -> Doc
 showHeap = (text "Heap" <+>) . brackets
@@ -181,7 +203,7 @@ showFWAddr addr = pad <> text a
         pad = mconcat (replicate (4 - length a) space)
 
 showStats :: TiState -> Doc
-showStats TiState{..} =
+showStats st =
   mconcat [ text "\n\n"
-          , text "Total number of steps = ", int (tiStatGetSteps tiStats)
+          , text "Total number of steps = ", int (st^.stats.steps)
           ]
