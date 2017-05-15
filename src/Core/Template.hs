@@ -1,11 +1,3 @@
-{-# LANGUAGE FlexibleInstances      #-}
-{-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE MultiParamTypeClasses  #-}
-{-# LANGUAGE PatternGuards          #-}
-{-# LANGUAGE RecordWildCards        #-}
-{-# LANGUAGE ScopedTypeVariables    #-}
-{-# LANGUAGE TemplateHaskell        #-}
-{-# LANGUAGE TypeSynonymInstances   #-}
 module Core.Template where
 
 import Control.Arrow ((>>>))
@@ -21,7 +13,6 @@ import Control.Lens.TH
 import Core.Language
 import Core.Utils
 import Core.Parser
-
 
 --------------------------------------------------------------------------------
 -- * Types
@@ -129,13 +120,13 @@ scStep st sc_name arg_names body =
   where
     (sc_and_actuals, rest)  = splitAt (length arg_names + 1) (st^.stack)
     (new_heap, result_addr) = instantiate body (st^.heap) env
-    env                     = arg_bindings ++ (st^.globals)
+    env                     = arg_bindings ++ st^.globals
     actual_params           = getArgs (st^.heap) sc_and_actuals
     arg_bindings
       | length (tail sc_and_actuals) == length arg_names
       = zip arg_names actual_params
       | otherwise
-      = error $ "Supercombinator applied to too few arguments"
+      = error "Supercombinator applied to too few arguments"
 
 
 getArgs :: TiHeap -> TiStack -> [Addr]

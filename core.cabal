@@ -33,6 +33,15 @@ library
                      , pretty
                      , lens
   default-language:    Haskell2010
+  default-extensions:  FlexibleInstances
+                     , FunctionalDependencies
+                     , MultiParamTypeClasses
+                     , PatternGuards
+                     , RecordWildCards
+                     , ScopedTypeVariables
+                     , TemplateHaskell
+                     , TypeSynonymInstances
+                     , TupleSections
 
 -- executable core-exe
 --   hs-source-dirs:      app

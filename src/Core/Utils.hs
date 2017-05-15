@@ -2,6 +2,7 @@ module Core.Utils where
 import Data.Maybe
 import Data.Monoid
 import Text.PrettyPrint hiding ((<>))
+import Control.Lens.TH
 
 --------------------------------------------------------------------------------
 -- * Misc utilities
@@ -17,12 +18,14 @@ data Heap a = Heap { heapSize :: Int, heapFree :: [Addr], heapCts :: [(Addr,a)]
                    } deriving Show
 
 data HeapStats = HeapStats
-  { heapAllocs :: Int, heapUpdates :: Int, heapRemoves :: Int
+  { heapStatsAllocs :: Int, heapStatsUpdates :: Int, heapStatsRemoves :: Int
   } deriving Show
 
 instance Monoid HeapStats where
   mempty = HeapStats 0 0 0
   (HeapStats a b c) `mappend` (HeapStats x y z) = HeapStats (a + x) (b + y) (c + z)
+
+makeLensesWith camelCaseFields  ''HeapStats
 
 hInitial :: Heap a
 hInitial = Heap 0 [1..] []
