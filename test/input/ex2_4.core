@@ -1,0 +1,2 @@
+-- simple test case for basic template instantiation
+main = S K K 3

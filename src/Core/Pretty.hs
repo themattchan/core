@@ -1,8 +1,8 @@
 module Core.Pretty where
 import Text.PrettyPrint
 import Core.Language
+import Core.Utils
 
-hcat' = foldr ($+$) empty
 ppVarList = hsep . map text
 
 pprint :: CoreProgram -> String

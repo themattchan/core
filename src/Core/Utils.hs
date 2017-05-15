@@ -1,6 +1,16 @@
 module Core.Utils where
 import Data.Maybe
 import Data.Monoid
+import Text.PrettyPrint hiding ((<>))
+
+--------------------------------------------------------------------------------
+-- * Misc utilities
+
+hcat' :: [Doc] -> Doc
+hcat' = foldr ($+$) empty
+
+--------------------------------------------------------------------------------
+-- * Appendix A: Heap data type and associated functions
 
 type Addr = Int
 data Heap a = Heap { heapSize :: Int, heapFree :: [Addr], heapCts :: [(Addr,a)]

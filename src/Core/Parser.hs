@@ -53,14 +53,16 @@ int = read <$> many1 digit
 
 binary op = P.Infix e P.AssocLeft where
   e = do { o <- symbol op; return (\x y -> EAp (EAp (EVar o) x) y) }
-prefix op = Prefix (do { reservedOp op; return fun })
 
+--prefix op = Prefix (do { reservedOp op; return fun })
+
+sequence1 :: Parser a -> Parser [a]
 sequence1 = P.semiSep1 coreLexer
 
 -- * Parser
 
 pProgram :: Parser CoreProgram
-pProgram =  sequence1 pSc
+pProgram = spaces *> sequence1 pSc
 
 -- Supercombinators
 pSc :: Parser CoreScDefn
