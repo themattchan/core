@@ -56,14 +56,15 @@ updateStats f st = st { tiStats = f (tiStats st) }
 compile :: CoreProgram -> TiState
 compile p = TiState initialStack initialTiDump initialHeap globals tiStatInitial
   where
-    sc_defs = p <> preludeDefs
+    sc_defs                = p <> preludeDefs
     (initialHeap, globals) = buildInitialHeap sc_defs
-    initialStack = [address_of_main]
-    address_of_main = lookup' ("main is not defined") "main" globals
+    initialStack           = [address_of_main]
+    address_of_main        = lookup' ("main is not defined") "main" globals
 
 buildInitialHeap :: CoreProgram -> (TiHeap, [(String, Addr)])
 buildInitialHeap = mapAccumL go hInitial where
-  go heap (name, args, body) = (\addr -> (name, addr)) <$> hAlloc heap (NSupercomb name args body)
+  go heap (name, args, body)
+    = (\addr -> (name, addr)) <$> hAlloc heap (NSupercomb name args body)
 
 --------------------------------------------------------------------------------
 -- * Step 2: Evaluate
@@ -71,7 +72,7 @@ buildInitialHeap = mapAccumL go hInitial where
 eval :: TiState -> [TiState]
 eval state = state : rest_states where
   rest_states | tiFinal state = []
-              | otherwise = eval next_state
+              | otherwise     = eval next_state
   next_state = doAdmin (step state)
 
 doAdmin :: TiState -> TiState
@@ -80,8 +81,8 @@ doAdmin = updateStats tiStatIncSteps
 tiFinal :: TiState -> Bool
 tiFinal TiState{..}
   | [sole_addr] <- tiStack = isDataNode (hLookup tiHeap sole_addr)
-  | [] <- tiStack = error ("Empty stack!")
-  | otherwise = False
+  | []          <- tiStack = error ("Empty stack!")
+  | otherwise              = False
 
 isDataNode :: Node -> Bool
 isDataNode (NNum _) = True
@@ -89,8 +90,8 @@ isDataNode _        = False
 
 step :: TiState -> TiState
 step st@TiState{..} = dispatch (hLookup tiHeap (head tiStack)) where
-  dispatch (NNum n) = numStep st n
-  dispatch (NAp a1 a2) = apStep st a1 a2
+  dispatch (NNum n)                  = numStep st n
+  dispatch (NAp a1 a2)               = apStep st a1 a2
   dispatch (NSupercomb sc args body) = scStep st sc args body
 
 numStep :: TiState -> Int -> TiState
@@ -104,13 +105,15 @@ scStep st sc_name arg_names body =
   st { tiStack = result_addr : rest
      , tiHeap  = new_heap }
   where
-    (sc_and_actuals, rest) = splitAt (length arg_names + 1) (tiStack st)
+    (sc_and_actuals, rest)  = splitAt (length arg_names + 1) (tiStack st)
     (new_heap, result_addr) = instantiate body (tiHeap st) env
-    env = arg_bindings ++ tiGlobals st
-    actual_params = getArgs (tiHeap st) sc_and_actuals
+    env                     = arg_bindings ++ tiGlobals st
+    actual_params           = getArgs (tiHeap st) sc_and_actuals
     arg_bindings
-      | length (tail sc_and_actuals) == length arg_names = zip arg_names actual_params
-      | otherwise = error $ "Supercombinator applied to too few arguments"
+      | length (tail sc_and_actuals) == length arg_names
+      = zip arg_names actual_params
+      | otherwise
+      = error $ "Supercombinator applied to too few arguments"
 
 
 getArgs :: TiHeap -> TiStack -> [Addr]
