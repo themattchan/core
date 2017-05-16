@@ -22,7 +22,7 @@ library
   exposed-modules:     Core
                      , Core.Utils
                      , Core.Language
---                     , Core.Pretty
+                     , Core.Pretty
                      , Core.Parser
                      , Core.Template
 
