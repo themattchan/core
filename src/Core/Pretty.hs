@@ -4,8 +4,6 @@ import Text.PrettyPrint
 import Core.Language
 import Core.Utils
 
-ppVarList = hsep . map text
-
 pprint :: CoreProgram -> String
 pprint = render . fsep . ppProgram
 
@@ -27,11 +25,13 @@ parenIf :: Bool -> (Doc -> Doc)
 parenIf b | b          = parens
           | otherwise  = id
 
-isCompound (ENum _) = False
-isCompound (EVar _) = False
+isCompound :: Expr t -> Bool
+isCompound (ENum _)      = False
+isCompound (EVar _)      = False
 isCompound (EConstr _ _) = False
-isCompound _ = True
+isCompound _             = True
 
+isApp :: Expr t -> Bool
 isApp (EAp _ _) = True
 isApp _         = False
 
@@ -71,3 +71,6 @@ ppDefns = vcat' . punctuate semi . map ppDefn
 
 ppDefn :: (Name, CoreExpr) -> Doc
 ppDefn (name, expr) = ppScDefn (name, [], expr)
+
+ppVarList :: [String] -> Doc
+ppVarList = hsep . map text
