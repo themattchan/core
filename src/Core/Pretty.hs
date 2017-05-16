@@ -23,9 +23,17 @@ binops = [("*", 1), ("/", 1)
          [("&",4)
          ,("|",5)]
 
-parenPrec :: Bool -> (Doc -> Doc)
-parenPrec b | b          = parens
-            | otherwise  = id
+parenIf :: Bool -> (Doc -> Doc)
+parenIf b | b          = parens
+          | otherwise  = id
+
+isCompound (ENum _) = False
+isCompound (EVar _) = False
+isCompound (EConstr _ _) = False
+isCompound _ = True
+
+isApp (EAp _ _) = True
+isApp _         = False
 
 ppExpr :: Int -> CoreExpr -> Doc
 ppExpr _ (ENum n)    = int n
@@ -34,15 +42,12 @@ ppExpr _ (EConstr tag arity) = text "Pack" <> braces (int tag <> comma <> int ar
 
 ppExpr prec (EAp left@(EAp (EVar b) e1) e2)
   | Just p <-  b `lookup` binops
-  = parenPrec (prec > p)
+  = parenIf (prec > p)
   $ ppExpr p e1 <+> text b <+> ppExpr p e2
 
-ppExpr prec (EAp e1 e2) =
-  let (p1,d1) = ppApp prec e1
-      (p2,d2) = ppApp (prec+1) e2
-  in parenPrec (p1<p2) d1 <+> parenPrec (p2<p1) d2 -- but now everything has full parens :(
-  where
-    ppApp prec e = (prec, ppExpr prec e)
+ppExpr prec (EAp e1 e2)
+   =  parenIf (isCompound e1 && not (isApp e1)) (ppExpr prec     e1)
+  <+> parenIf (isCompound e2)                   (ppExpr (prec+1) e2)
 
 ppExpr prec (ELet isRec defns expr)
   = hang (text (if isRec then "letrec" else "let"))
