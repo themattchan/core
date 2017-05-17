@@ -72,7 +72,7 @@ compile p = TiState initialStack initialTiDump initialHeap globals tiStatInitial
     sc_defs                = p <> preludeDefs
     (initialHeap, globals) = buildInitialHeap sc_defs
     initialStack           = [address_of_main]
-    address_of_main        = lookup' ("main is not defined") "main" globals
+    address_of_main        = lookupErr ("main is not defined") "main" globals
 
 buildInitialHeap :: CoreProgram -> (TiHeap, [(String, Addr)])
 buildInitialHeap = mapAccumL go hInitial where
@@ -140,7 +140,7 @@ instantiate (EAp e1 e2) heap env = hAlloc heap2 (NAp a1 a2)
   where
     (heap1, a1) = instantiate e1 heap  env
     (heap2, a2) = instantiate e2 heap1 env
-instantiate (EVar v)    heap env = (heap, lookup' ("Unbound variable: " <> show v) v env)
+instantiate (EVar v)    heap env = (heap, lookupErr ("Unbound variable: " <> show v) v env)
 instantiate ce _ _ = error $ "Can't instantiate expression type yet: " <> show ce
 
 --------------------------------------------------------------------------------
