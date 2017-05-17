@@ -30,12 +30,9 @@ parseProgram = doParseProgram ""
 -- * Lexing and utils
 
 coreDef = haskellStyle
-  { P.reservedNames = [ "let", "letrec", "case", "in", "of", "Pack" ]
-  , P.reservedOpNames = [ "=", ",", ";","->","<-", "\\", "."]
+  { P.reservedNames   = keywords
+  , P.reservedOpNames = reservedOps
   }
-relops = ["<", ">", "==", "~=", ">=","<="]
-arithops = [ "+","-","*","/"]
-bitops = ["&","|"]
 
 coreLexer   = P.makeTokenParser coreDef
 parens      = P.parens coreLexer
@@ -78,7 +75,7 @@ pCoreExpr = choice [pLet, pCase, pLam, expr1] where
   expr1 = P.buildExpressionParser table term
   table = [ map binary ["*", "/"]
           , map binary ["+", "-"]
-          , map binary relops
+          , map binary relOps
           , [ binary "&" ]
           , [ binary "|" ]
           ]

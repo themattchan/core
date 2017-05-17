@@ -43,6 +43,22 @@ isAtomicExpr (EVar _) = True
 isAtomicExpr (ENum _) = True
 isAtomicExpr _        = False
 
+isApp :: Expr t -> Bool
+isApp (EAp _ _) = True
+isApp _         = False
+
+isCompound :: Expr t -> Bool
+isCompound (ENum _)      = False
+isCompound (EVar _)      = False
+isCompound (EConstr _ _) = False
+isCompound _             = True
+
+reservedOps = [ "=", ",", ";","->","<-", "\\", "."]
+keywords    = [ "let", "letrec", "case", "in", "of", "Pack" ]
+relOps      = ["<", ">", "==", "~=", ">=","<="]
+arithOps    = [ "+","-","*","/"]
+bitOps      = ["&","|"]
+
 preludeDefs :: CoreProgram
 preludeDefs
   = [ ("I", ["x"], EVar "x")
