@@ -51,14 +51,14 @@ ppExpr prec (EAp e1 e2)
 
 ppExpr prec (ELet isRec defns expr)
   = hang (text (if isRec then "letrec" else "let"))
-          3 (ppDefns defns) $+$
+          3 (ppDefns defns) $$
     text "in " <> ppExpr prec expr
 
 ppExpr prec (ECase e alts)
   = hang caseof 2 (ppAlts alts)
     where
-      caseof = text "case" <+> ppExpr prec e <+> text "of"
-      ppAlts = vcat' . map ppAlter
+      caseof = text "case" <+> parenIf (isCompound e) (ppExpr prec e) <+> text "of"
+      ppAlts = vcat . map ppAlter
       ppAlter (tag, vars, expr)
         = char '<' <> int tag <> char '>'
         <+> ppVarList vars
@@ -67,7 +67,7 @@ ppExpr prec (ECase e alts)
 ppExpr prec (ELam args body) = char '\\' <> ppVarList args <> char '.' <+> ppExpr prec body
 
 ppDefns :: [(Name, CoreExpr)] -> Doc
-ppDefns = vcat' . punctuate semi . map ppDefn
+ppDefns = vcat . punctuate semi . map ppDefn
 
 ppDefn :: (Name, CoreExpr) -> Doc
 ppDefn (name, expr) = ppScDefn (name, [], expr)

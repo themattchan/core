@@ -147,11 +147,12 @@ instantiate ce _ _ = error $ "Can't instantiate expression type yet: " <> show c
 -- * Step 3: Print results
 
 showResults :: [TiState] -> String
-showResults states = render . vcat' . punctuate (text "\n") $ results where
+showResults states = render . vcat . punctuate (text "\n") $ results where
   results = map showState states <> [ showStats (last states) ]
 
 showState :: TiState -> Doc
-showState TiState{..} = showStack tiStateHeap tiStateStack $+$ showHeap tiStateHeap
+showState TiState{..} = showStack tiStateHeap tiStateStack $+$
+                        showHeap  tiStateHeap
 
 showHeap :: TiHeap -> Doc
 showHeap = (text "Heap" <+>) . brackets
@@ -159,7 +160,7 @@ showHeap = (text "Heap" <+>) . brackets
          . map showAddrD . hAddresses
 
 showStack :: TiHeap -> TiStack -> Doc
-showStack heap stack = text "Stk" <+> brackets (nest 2 (vcat' items))
+showStack heap stack = text "Stk" <+> brackets (nest 2 (vcat items))
   where
     items = map showStackItem stack
     showStackItem addr = mconcat [ showFWAddr addr, text ": "

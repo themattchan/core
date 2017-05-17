@@ -1,4 +1,5 @@
 module Core.Utils where
+import Data.Function
 import Data.Maybe
 import Data.Monoid
 import Text.PrettyPrint hiding ((<>))
@@ -8,7 +9,15 @@ import Control.Lens.TH
 -- * Misc utilities
 
 vcat' :: [Doc] -> Doc
-vcat' = foldr ($+$) empty
+vcat' = foldr ($$) empty
+
+besides :: [Doc] -> [Doc] -> Doc
+besides xs ys = uncurry ((<+>) `on` vcat')
+              . unzip
+              $ (zip `on` (++ pad)) xs ys
+  where
+    d = abs (length xs - length ys)
+    pad = replicate d (text "")
 
 --------------------------------------------------------------------------------
 -- * Appendix A: Heap data type and associated functions

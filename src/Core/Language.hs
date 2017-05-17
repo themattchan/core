@@ -25,7 +25,7 @@ data Expr a
   | ELet                    -- Let(rec) expressions
       Bool                  --   boolean with True = recursive,
       [(a, Expr a)]         --   Definitions
-      (Expr a)              --   Body of let(re)
+      (Expr a)              --   Body of let(rec)
   | ECase                   -- Case expression
       (Expr a)              --   Expression to scrutinise
       [Alter a]             --   Alternatives
