@@ -1,9 +1,15 @@
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
+
 module Core.Utils where
 import Data.Function
 import Data.Maybe
-import Data.Monoid
+import Data.Monoid hiding ((<>))
+import Data.Semigroup
 import Text.PrettyPrint hiding ((<>))
 import Control.Lens.TH
+import Generics.Deriving.Monoid (memptydefault, mappenddefault)
+import GHC.Generics (Generic)
 
 --------------------------------------------------------------------------------
 -- * Misc utilities
@@ -27,12 +33,15 @@ data Heap a = Heap { heapSize :: Int, heapFree :: [Addr], heapCts :: [(Addr,a)]
                    } deriving Show
 
 data HeapStats = HeapStats
-  { heapStatsAllocs :: Int, heapStatsUpdates :: Int, heapStatsRemoves :: Int
-  } deriving Show
-
+  { heapStatsAllocs  :: Sum Int
+  , heapStatsUpdates :: Sum Int
+  , heapStatsRemoves :: Sum Int
+  } deriving (Show, Generic)
+instance Semigroup HeapStats where
+  (<>) = mappenddefault
 instance Monoid HeapStats where
-  mempty = HeapStats 0 0 0
-  (HeapStats a b c) `mappend` (HeapStats x y z) = HeapStats (a + x) (b + y) (c + z)
+  mempty = memptydefault
+  mappend = (<>)
 
 makeLensesWith camelCaseFields  ''HeapStats
 

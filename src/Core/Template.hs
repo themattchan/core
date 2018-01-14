@@ -1,13 +1,20 @@
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
+
+-- | Chapter 2: Template instantiation
 module Core.Template where
 
 import Control.Arrow ((>>>))
 import Control.Monad
-import Data.Monoid
+import Data.Semigroup (Semigroup(..), Max(..))
+import Data.Monoid hiding ((<>))
 import Data.List
+import GHC.Generics (Generic)
+import Generics.Deriving.Monoid (memptydefault, mappenddefault)
 
 import Text.PrettyPrint hiding ((<>))
 
-import Control.Lens (to, (&), (%~), (^.), (+~), (.~), (^?!))
+import Control.Lens (to, (&), (%~), (^.), (+~), (.~), (<>~), (^?!))
 import Control.Lens.TH
 
 import Core.Language
@@ -33,26 +40,29 @@ initialTiDump = DummyTiDump
 
 type TiHeap = Heap Node
 
-data Node = NAp Addr Addr
-          | NSupercomb Name [Name] CoreExpr
-          | NNum Int
-          deriving (Show)
+data Node
+  = NAp Addr Addr
+  | NSupercomb Name [Name] CoreExpr
+  | NNum Int
+  deriving (Show)
 
 type TiGlobals =  [(Name,Addr)]
 
 data TiStats = TiStats
-  { tiStatsScReductions   :: Int
-  , tiStatsPrimReductions :: Int
+  { tiStatsScReductions   :: Sum Int
+  , tiStatsPrimReductions :: Sum Int
   , tiStatsHeapStats      :: HeapStats
-  , tiStatsSteps          :: Int
-  , tiStatsMaxStackDepth  :: Int
-  } deriving Show
+  , tiStatsSteps          :: Sum Int
+  , tiStatsMaxStackDepth  :: Max Int
+  } deriving (Show, Generic)
+instance Semigroup TiStats where
+  (<>) = mappenddefault
+instance Monoid TiStats where
+  mempty = memptydefault
+  mappend = (<>)
 
 makeLensesWith camelCaseFields  ''TiState
 makeLensesWith camelCaseFields  ''TiStats
-
-tiStatInitial = TiStats 0 0 mempty 0 0
-updateStats f = stats %~ f
 
 --------------------------------------------------------------------------------
 -- * Runners
@@ -67,7 +77,7 @@ runFile = parseFile >=> compile >>> eval >>> showResults >>> putStrLn
 -- * Step 1: Compile
 
 compile :: CoreProgram -> TiState
-compile p = TiState initialStack initialTiDump initialHeap globals tiStatInitial
+compile p = TiState initialStack initialTiDump initialHeap globals mempty
   where
     sc_defs                = p <> preludeDefs
     (initialHeap, globals) = buildInitialHeap sc_defs
@@ -75,8 +85,8 @@ compile p = TiState initialStack initialTiDump initialHeap globals tiStatInitial
     address_of_main        = lookupErr ("main is not defined") "main" globals
 
 buildInitialHeap :: CoreProgram -> (TiHeap, [(String, Addr)])
-buildInitialHeap = mapAccumL go hInitial where
-  go heap (name, args, body)
+buildInitialHeap = mapAccumL allocateSc hInitial where
+  allocateSc heap (name, args, body)
     = (\addr -> (name, addr)) <$> hAlloc heap (NSupercomb name args body)
 
 --------------------------------------------------------------------------------
@@ -89,7 +99,7 @@ eval state = state : rest_states where
   next_state = doAdmin (step state)
 
 doAdmin :: TiState -> TiState
-doAdmin = updateStats (steps +~ 1)
+doAdmin = stats.steps <>~ Sum 1
 
 tiFinal :: TiState -> Bool
 tiFinal st
@@ -113,28 +123,38 @@ numStep _ _ = error "Number applied as a function!"
 apStep :: TiState -> Addr -> Addr -> TiState
 apStep st a1 a2 = st & stack .~ a1 : st^.stack
 
+
+-- To apply a supercombinator...
 scStep :: TiState -> Name -> [Name]  -> CoreExpr -> TiState
 scStep st sc_name arg_names body =
   st & stack .~ result_addr : rest
      & heap  .~ new_heap
   where
-    (sc_and_actuals, rest)  = splitAt (length arg_names + 1) (st^.stack)
-    (new_heap, result_addr) = instantiate body (st^.heap) env
-    env                     = arg_bindings ++ st^.globals
-    actual_params           = getArgs (st^.heap) sc_and_actuals
+    -- get lhs of binding from the stack
+    (sc_and_actuals, rest)  = splitAt (length arg_names + 1) (st ^. stack)
+    -- build environment (map from names to addrs) from binders and globals
+    env                     = arg_bindings ++ st ^. globals
+    -- find heap addresses of formal parameters and bind to arg_names
+    actual_params           = getArgs (st ^. heap) sc_and_actuals
     arg_bindings
       | length (tail sc_and_actuals) == length arg_names
       = zip arg_names actual_params
       | otherwise
       = error "Supercombinator applied to too few arguments"
+    -- finally, instantiate the expression in the heap
+    (new_heap, result_addr) = instantiate body (st ^. heap) env
 
-
+-- Given a stack (with supercombinator on top), find heap addresses of all the
+-- arguments of all function application nodes.
 getArgs :: TiHeap -> TiStack -> [Addr]
 getArgs heap (sc:stack) = map get_arg stack
   where
     get_arg addr = let (NAp fun arg) = hLookup heap addr in arg
 
-instantiate :: CoreExpr -> TiHeap -> [(Name,Addr)] -> (TiHeap,Addr)
+instantiate :: CoreExpr      -- ^ supercombinator body
+            -> TiHeap        -- ^ heap before instantiation
+            -> [(Name,Addr)] -- ^ name -> addr environment
+            -> (TiHeap,Addr) -- ^ heap after instantiation, address at root of instance
 instantiate (ENum n)    heap env = hAlloc heap  (NNum n)
 instantiate (EAp e1 e2) heap env = hAlloc heap2 (NAp a1 a2)
   where
@@ -147,8 +167,9 @@ instantiate ce _ _ = error $ "Can't instantiate expression type yet: " <> show c
 -- * Step 3: Print results
 
 showResults :: [TiState] -> String
-showResults states = render . vcat . punctuate (text "\n") $ results where
-  results = map showState states <> [ showStats (last states) ]
+showResults states = render . vcat . punctuate (text "\n") $ results
+  where
+    results = map showState states <> [ showStats (last states) ]
 
 showState :: TiState -> Doc
 showState TiState{..} = showStack tiStateHeap tiStateStack $+$
@@ -197,5 +218,5 @@ showFWAddr addr = pad <> text a
 showStats :: TiState -> Doc
 showStats st =
   mconcat [ text "\n\n"
-          , text "Total number of steps = ", int (st^.stats.steps)
+          , text "Total number of steps = ", int (st ^. stats.steps.to getSum)
           ]
