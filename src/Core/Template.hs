@@ -15,7 +15,7 @@ import Control.Lens (to, (&), (<&>), (%~), (^.), (+~), (.~), (<>~), (^?!))
 import Control.Lens.TH
 
 import Core.Language
-import Core.Utils
+import Core.Utils hiding (heapStats)
 import Core.Parser
 
 --------------------------------------------------------------------------------
@@ -107,20 +107,23 @@ eval state = state : rest_states where
   next_state = doAdmin (step state)
 
 doAdmin :: TiState -> TiState
-doAdmin = stats.steps <>~ Sum 1
+doAdmin st = st & stats.steps <>~ Sum 1
+                & stats.maxStackDepth <>~ Max (length (st ^. stack))
+                & stats.heapStats .~ (st^.heap.stats)
+-- TODO count prim/supercombo reductions
 
 tiFinal :: TiState -> Bool
-tiFinal st
-  | [sole_addr] <- st^.stack = isDataNode (hLookup (st^.heap) sole_addr)
-  | st^.stack.to null        = error ("Empty stack!")
-  | otherwise                = False
+tiFinal (TiState stack dump heap globals stats)
+  | [sole_addr] <- stack = isDataNode (hLookup heap sole_addr)
+  | null stack           = error ("Empty stack!")
+  | otherwise            = False
 
 isDataNode :: Node -> Bool
 isDataNode (NNum _) = True
 isDataNode _        = False
 
 step :: TiState -> TiState
-step st = dispatch (hLookup (st^.heap) (st^.stack ^?! to head))
+step st@(TiState stack _ heap _ _) = dispatch (hLookup heap (head stack))
   where
     dispatch (NNum n)                  = numStep st n
     dispatch (NAp a1 a2)               = apStep st a1 a2
@@ -130,8 +133,7 @@ numStep :: TiState -> Int -> TiState
 numStep _ _ = error "Number applied as a function!"
 
 apStep :: TiState -> Addr -> Addr -> TiState
-apStep st a1 a2 = st & stack .~ a1 : st^.stack
-
+apStep st a1 a2 = st & stack %~ (a1 :)
 
 -- To apply a supercombinator...
 scStep :: TiState -> Name -> [Name]  -> CoreExpr -> TiState
@@ -165,11 +167,24 @@ instantiate :: CoreExpr      -- ^ supercombinator body
             -> [(Name,Addr)] -- ^ name -> addr environment
             -> (TiHeap,Addr) -- ^ heap after instantiation, address at root of instance
 instantiate (ENum n)    heap env = hAlloc heap  (NNum n)
+
 instantiate (EAp e1 e2) heap env = hAlloc heap2 (NAp a1 a2)
   where
     (heap1, a1) = instantiate e1 heap  env
     (heap2, a2) = instantiate e2 heap1 env
-instantiate (EVar v)    heap env = (heap, lookupErr ("Unbound variable: " <> show v) v env)
+
+instantiate (EVar v)    heap env =
+  (heap, lookupErr ("Unbound variable: " <> show v) v env)
+
+instantiate (ELet isRec bindings body) heap env
+  = uncurry (instantiate body)
+    $ foldl (\(accHeap,accEnv) (var,expr) ->
+               let (accHeap', addr) = instantiate expr accHeap
+                                          ( if isRec then accEnv' else accEnv)
+                   accEnv' = (var,addr) : accEnv
+               in (accHeap', accEnv')
+            ) (heap,env) bindings
+
 instantiate ce _ _ = error $ "Can't instantiate expression type yet: " <> show ce
 
 --------------------------------------------------------------------------------

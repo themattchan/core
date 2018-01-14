@@ -4,6 +4,7 @@ import Data.Maybe
 import Data.Monoid hiding ((<>))
 import Data.Semigroup
 import Text.PrettyPrint hiding ((<>))
+import Control.Lens ((&), (.~), (<>~))
 import Control.Lens.TH
 import Generics.Deriving.Monoid (memptydefault, mappenddefault)
 import GHC.Generics (Generic)
@@ -26,13 +27,17 @@ besides xs ys = uncurry ((<+>) `on` vcat')
 -- * Appendix A: Heap data type and associated functions
 
 type Addr = Int
-data Heap a = Heap { heapSize :: Int, heapFree :: [Addr], heapCts :: [(Addr,a)]
-                   } deriving Show
+data Heap a = Heap
+  { heapSize :: Int
+  , heapFree :: [Addr]
+  , heapCts :: [(Addr,a)]
+  , heapStats :: HeapStats
+  } deriving Show
 
 data HeapStats = HeapStats
   { heapStatsAllocs  :: Sum Int
   , heapStatsUpdates :: Sum Int
-  , heapStatsRemoves :: Sum Int
+  , heapStatsFrees :: Sum Int
   } deriving (Show, Generic)
 instance Semigroup HeapStats where
   (<>) = mappenddefault
@@ -40,22 +45,27 @@ instance Monoid HeapStats where
   mempty = memptydefault
   mappend = (<>)
 
+makeLensesWith camelCaseFields  ''Heap
 makeLensesWith camelCaseFields  ''HeapStats
 
 hInitial :: Heap a
-hInitial = Heap 0 [1..] []
+hInitial = Heap 0 [1..] [] mempty
 
 hAlloc :: Heap a -> a -> (Heap a, Addr)
-hAlloc (Heap s (next:free) cts) n = (Heap (s+1) free ((next,n):cts), next)
+hAlloc (Heap s (next:free) cts hstats) n =
+  (Heap (s+1) free ((next,n):cts) (hstats & allocs <>~ Sum 1), next)
 hAlloc _ _ = error "hAlloc: heap full"
 
 hUpdate :: Heap a -> Addr -> a -> Heap a
-hUpdate h a n = h { heapCts = (a,n) : remove (heapCts h) a }
+hUpdate h a n = h { heapCts = (a,n) : remove (heapCts h) a
+                  , heapStats = heapStats h & updates <>~ Sum 1
+                  }
 
 hFree :: Heap a -> Addr -> Heap a
 hFree h a = h { heapSize = heapSize h -1
               , heapFree = a : heapFree h
               , heapCts  = remove (heapCts h) a
+              , heapStats = heapStats h & frees <>~ Sum 1
               }
 
 hLookup :: Heap a -> Addr -> a

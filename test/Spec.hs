@@ -22,12 +22,16 @@ main = defaultMain $
 
 parserTests =
   testCase "parser tests" $ do
-    forM_ [ "ex1_21", "infix_simpl", "infixops"] $ \f -> do
+    forM_ [ "ex1_21", "infix_simpl", "infixops", "ex2_11"] $ \f -> do
       src <- readFile (testFile f)
       let result = Parser.parseProgram src
       assertBool ("PARSE ERROR: " ++ f) (isRight result)
 
 templateTests =
   testCase "template instantiation" $ do
-    src <- readFile $ testFile "ex2_4"
-    Template.reduceToNormalForm src @?= Right (Template.NNum 3)
+    let rnfFile f expect = do
+          src <- readFile $ testFile f
+          Template.reduceToNormalForm src @?= Right expect
+
+    rnfFile "ex2_4" (Template.NNum 3)
+    rnfFile "ex2_11" (Template.NNum 4)
