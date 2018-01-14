@@ -177,13 +177,14 @@ instantiate (EVar v)    heap env =
   (heap, lookupErr ("Unbound variable: " <> show v) v env)
 
 instantiate (ELet isRec bindings body) heap env
-  = uncurry (instantiate body)
-    $ foldl (\(accHeap,accEnv) (var,expr) ->
+  = let (heap', env') =
+          foldl (\(accHeap,accEnv) (var,expr) ->
                let (accHeap', addr) = instantiate expr accHeap
-                                          ( if isRec then accEnv' else accEnv)
+                                          ( if isRec then env' else env)
                    accEnv' = (var,addr) : accEnv
                in (accHeap', accEnv')
             ) (heap,env) bindings
+    in instantiate body heap' env'
 
 instantiate ce _ _ = error $ "Can't instantiate expression type yet: " <> show ce
 

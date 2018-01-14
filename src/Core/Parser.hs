@@ -72,7 +72,7 @@ pSc = do
   return (name, args, body)
 
 pCoreExpr :: Parser CoreExpr
-pCoreExpr = choice [pLet, pCase, pLam, expr1] where
+pCoreExpr = choice [try pLet, try pCase, pLam, expr1] where
   expr1 = P.buildExpressionParser table term
   table = [ map binary ["*", "/"]
           , map binary ["+", "-"]
@@ -107,7 +107,7 @@ pCoreExpr = choice [pLet, pCase, pLam, expr1] where
 
   pLet  = do
     isrec <- try (reserved "let" $> False) <|> (reserved "letrec" $> True)
-    binds <- sequence1 bind1
+    binds <- sequence1 (try bind1)
     reserved "in"
     expr <- pCoreExpr
     return (ELet isrec binds expr)
