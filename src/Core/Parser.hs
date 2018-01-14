@@ -72,7 +72,7 @@ pSc = do
   return (name, args, body)
 
 pCoreExpr :: Parser CoreExpr
-pCoreExpr = choice [try pLet, try pCase, pLam, expr1] where
+pCoreExpr = choice [pLet, pCase, pLam, expr1] where
   expr1 = P.buildExpressionParser table term
   table = [ map binary ["*", "/"]
           , map binary ["+", "-"]
