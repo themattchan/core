@@ -1,4 +1,3 @@
-{-# LANGUAGE PatternGuards #-}
 module Core.Pretty where
 import Text.PrettyPrint
 import Core.Language

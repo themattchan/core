@@ -1,5 +1,6 @@
 module Core.Parser
-  ( parseFile
+  ( ParseError
+  , parseFile
   , parseProgram
   ) where
 
@@ -18,13 +19,13 @@ import Core.Language
 
 instance Exception ParseError
 
-doParseProgram :: SourceName -> String -> CoreProgram
-doParseProgram f = either throw id . parse pProgram f
+doParseProgram :: SourceName -> String -> Either ParseError CoreProgram
+doParseProgram = parse pProgram
 
 parseFile :: FilePath -> IO CoreProgram
-parseFile f = doParseProgram f <$> readFile f
+parseFile f = either throw id . doParseProgram f <$> readFile f
 
-parseProgram :: String -> CoreProgram
+parseProgram :: String -> Either ParseError CoreProgram
 parseProgram = doParseProgram ""
 
 -- * Lexing and utils

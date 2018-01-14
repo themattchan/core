@@ -1,6 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DeriveAnyClass #-}
-
 -- | Chapter 2: Template instantiation
 module Core.Template where
 
@@ -14,7 +11,7 @@ import Generics.Deriving.Monoid (memptydefault, mappenddefault)
 
 import Text.PrettyPrint hiding ((<>))
 
-import Control.Lens (to, (&), (%~), (^.), (+~), (.~), (<>~), (^?!))
+import Control.Lens (to, (&), (<&>), (%~), (^.), (+~), (.~), (<>~), (^?!))
 import Control.Lens.TH
 
 import Core.Language
@@ -26,9 +23,14 @@ import Core.Parser
 
 data TiState = TiState
   { tiStateStack   :: TiStack
+  -- ^ stack of addresses, each identifying a node.
+  -- The stack forms the spine of the expr under evaluation.
   , tiStateDump    :: TiDump
+  -- ^ state of spine stack prior to the evaluation of a strict primitive.
   , tiStateHeap    :: TiHeap
+  -- ^ collection of tagged nodes
   , tiStateGlobals :: TiGlobals
+  -- ^ node addresses of supercombinators and primitives.
   , tiStateStats   :: TiStats
   } deriving (Show)
 
@@ -44,7 +46,7 @@ data Node
   = NAp Addr Addr
   | NSupercomb Name [Name] CoreExpr
   | NNum Int
-  deriving (Show)
+  deriving (Show, Eq)
 
 type TiGlobals =  [(Name,Addr)]
 
@@ -67,11 +69,17 @@ makeLensesWith camelCaseFields  ''TiStats
 --------------------------------------------------------------------------------
 -- * Runners
 
-runProg :: String -> String
-runProg = parseProgram >>> compile >>> eval >>> showResults
+runProg :: String -> Either ParseError String
+runProg = parseProgram >>> fmap (compile >>> eval >>> showResults)
 
 runFile :: FilePath -> IO ()
-runFile = parseFile >=> compile >>> eval >>> showResults >>> putStrLn
+runFile = parseFile >=> (compile >>> eval >>> showResults >>> putStrLn)
+
+reduceToNormalForm :: String -> Either ParseError Node
+reduceToNormalForm = parseProgram >>> fmap (compile >>> eval >>> last >>> getNode)
+  where
+    getNode :: TiState -> Node
+    getNode st = hLookup (st^.heap) (st ^. stack^?! to head)
 
 --------------------------------------------------------------------------------
 -- * Step 1: Compile
@@ -112,10 +120,11 @@ isDataNode (NNum _) = True
 isDataNode _        = False
 
 step :: TiState -> TiState
-step st = dispatch (hLookup (st^.heap) (st^.stack ^?! to head)) where
-  dispatch (NNum n)                  = numStep st n
-  dispatch (NAp a1 a2)               = apStep st a1 a2
-  dispatch (NSupercomb sc args body) = scStep st sc args body
+step st = dispatch (hLookup (st^.heap) (st^.stack ^?! to head))
+  where
+    dispatch (NNum n)                  = numStep st n
+    dispatch (NAp a1 a2)               = apStep st a1 a2
+    dispatch (NSupercomb sc args body) = scStep st sc args body
 
 numStep :: TiState -> Int -> TiState
 numStep _ _ = error "Number applied as a function!"
