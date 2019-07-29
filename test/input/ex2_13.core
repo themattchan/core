@@ -1,0 +1,9 @@
+id x = x ;
+
+-- main = twice twice id 3
+-- with indirection: 31 steps
+-- no indirection: 33 steps
+
+main = twice twice twice id 3
+-- with indirection: 123 steps
+-- no indirection: 165 steps
